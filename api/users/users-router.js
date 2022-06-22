@@ -20,7 +20,13 @@ const { restricted, only } = require("../auth/auth-middleware.js");
 router.get("/", restricted, (req, res, next) => { // done for you
   Users.find()
     .then(users => {
-      res.json(users);
+      const new_users = users.reduce((acc,x) => { 
+          if (x.username) { 
+            return acc.concat({ user_id: x.user_id, username: x.username, role_name: x.role_name }); 
+          } 
+          return acc; 
+        }, []);
+      res.json(new_users);
     })
     .catch(next);
 });

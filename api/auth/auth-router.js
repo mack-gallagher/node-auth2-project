@@ -2,6 +2,23 @@ const router = require("express").Router();
 const { checkUsernameExists, validateRoleName } = require('./auth-middleware');
 const { JWT_SECRET } = require("../secrets"); // use this secret!
 const User = require('../users/users-model');
+const jwt = require('jsonwebtoken');
+
+const bcrypt = require('bcryptjs');
+
+
+function generateToken(user) {
+  const payload = {
+                    subject: user.user_id, 
+                    username: user.username,
+                    role_name: user.role_name,
+                  };
+  const options = {
+                    expiresIn: '1d',
+                  }
+
+  return jwt.sign(payload, JWT_SECRET, options);
+}
 
 router.post("/register", validateRoleName, (req, res, next) => {
   /**
@@ -15,6 +32,14 @@ router.post("/register", validateRoleName, (req, res, next) => {
       "role_name": "angel"
     }
    */
+
+
+  const hash = bcrypt.hashSync(req.body.password,12);
+
+  req.body.password = hash;
+
+  console.log("incoming req.body:");
+  console.log(req.body);
 
   User.add(req.body)
     .then(result => {
@@ -47,6 +72,37 @@ router.post("/login", checkUsernameExists, (req, res, next) => {
 
   
   /* @ FUTURE!MACK: HI! SORRY! PLEASE VALIDATE PASSWORD HERE. THANK YOU! */
+
+  User.find()
+    .then(result => {
+
+      let user = '';
+
+      for (let i = 0; i < result.length; i++) {
+
+        if (result[i].password 
+            && result[i].username
+            && result[i].username === req.body.username
+            && bcrypt.compareSync(req.body.password,result[i].password)) {
+          user = result[i];
+        }
+        
+      }
+  if (!user || user.username !== req.body.username) {
+        res.status(401).json({ message: 'invalid credentials' });
+        return;
+      } else {
+        const token = generateToken(user);
+
+        res.status(200).json({
+          message: `${user.username} is back!`, 
+          token,
+        });
+
+
+      }
+      
+    })
 
 });
 

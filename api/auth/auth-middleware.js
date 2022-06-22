@@ -24,8 +24,10 @@ const restricted = (req, res, next) => {
   if (!token) {
     res.status(401).json({ message: 'Token required' });
     return;
-  } else if (token && jwt.verify(token,JWT_SECRET)) {
-    req.authorization = jwt.verify(token,JWT_SECRET);
+  } else if (token && 
+            !(token.split('.').length !== 3)
+            && jwt.verify(token,JWT_SECRET)) {
+    req.headers.authorization = jwt.verify(token,JWT_SECRET);
     next();
   } else {
     res.status(401).json({ message: 'Token invalid' });
@@ -49,10 +51,10 @@ const only = role_name => (req, res, next) => {
   const token_role_name = req.headers.authorization.role_name;
   if (!token_role_name || token_role_name !== role_name) {
     res.status(403).json({ message: 'This is not for you' });
+    req.headers.authorization = '';
     return;
   }
-
-  req.headers.authorization = '';
+ 
   next();
 
 }
@@ -100,8 +102,16 @@ const validateRoleName = (req, res, next) => {
     }
   */
 
-  if (!req.body.role_name.trim()) {
-    req.role_name = 'student';
+  if (!req.body.username
+      || !req.body.password) {
+    res.status(400).json({ message: 'Username and password required' });
+    return;
+  }
+
+  if (!req.body.role_name || !req.body.role_name.trim()) {
+
+
+    req.body.role_name = 'student';
     next();
   } else if (req.body.role_name.trim().length > 32) {
     res.status(422).json({ message: 'Role name can not be longer than 32 chars' });
@@ -110,7 +120,7 @@ const validateRoleName = (req, res, next) => {
     res.status(422).json({ message: 'Role name can not be admin' });
     return;
   } else {
-    req.role_name = req.body.role_name.trim();
+    req.body.role_name = req.body.role_name.trim();
     next();
   }
 
